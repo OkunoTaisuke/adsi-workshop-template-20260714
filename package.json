@@ -1,0 +1,14 @@
+{
+  "name": "attendance-system",
+  "private": true,
+  "scripts": {
+    "setup": "cd backend && mvn dependency:resolve && cd ../frontend && npm install",
+    "boot": "cd backend && mvn spring-boot:run",
+    "boot:workshop": "cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=local",
+    "dev": "cd frontend && npm run dev",
+    "dev:sagemaker": "bash frontend/scripts/dev-sagemaker.sh",
+    "dev:sagemaker:stop": "pkill -f 'sagemaker-proxy.mjs' 2>/dev/null; pkill -f 'next start.*3001' 2>/dev/null; pkill -f 'spring-boot:run.*local' 2>/dev/null; echo 'Stopped'",
+    "check:backend": "cd backend && mvn verify",
+    "lint:frontend": "cd frontend && npm run lint"
+  }
+}
