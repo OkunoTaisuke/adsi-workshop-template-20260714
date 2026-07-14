@@ -2,7 +2,7 @@ import http from "node:http";
 
 const LISTEN_PORT = 3000;
 const NEXT_PORT = 3001;
-const PREFIX = "/codeeditor/default/absports/3000";
+const PREFIX = "/codeeditor/default";
 
 const server = http.createServer((req, res) => {
   const url = PREFIX + req.url;
