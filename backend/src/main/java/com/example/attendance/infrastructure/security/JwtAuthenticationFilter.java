@@ -2,6 +2,7 @@ package com.example.attendance.infrastructure.security;
 
 import com.example.attendance.domain.model.Employee;
 import com.example.attendance.domain.repository.EmployeeRepository;
+import com.example.attendance.domain.repository.EmployeeRoleRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,17 +15,21 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final EmployeeRepository employeeRepository;
+    private final EmployeeRoleRepository employeeRoleRepository;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, EmployeeRepository employeeRepository) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider,
+                                   EmployeeRepository employeeRepository,
+                                   EmployeeRoleRepository employeeRoleRepository) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.employeeRepository = employeeRepository;
+        this.employeeRoleRepository = employeeRoleRepository;
     }
 
     @Override
@@ -38,7 +43,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Employee employee = employeeRepository.findByEmail(email).orElse(null);
 
             if (employee != null) {
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + employee.getRole().name()));
+                var roles = employeeRoleRepository.findByEmployeeId(employee.getId());
+                var authorities = roles.stream()
+                        .map(er -> new SimpleGrantedAuthority("ROLE_" + er.getRole().name()))
+                        .collect(Collectors.toList());
+
                 var authentication = new UsernamePasswordAuthenticationToken(employee, null, authorities);
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);

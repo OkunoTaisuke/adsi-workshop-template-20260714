@@ -1,0 +1,14 @@
+package com.example.attendance.application.dto;
+
+import com.example.attendance.domain.model.Role;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+
+import java.util.Set;
+
+public record EmployeeUpdateRequest(
+        @NotBlank String name,
+        @NotNull Long departmentId,
+        @NotEmpty Set<Role> roles
+) {}

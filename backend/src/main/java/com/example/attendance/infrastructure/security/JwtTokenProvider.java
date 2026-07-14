@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class JwtTokenProvider {
@@ -23,16 +24,22 @@ public class JwtTokenProvider {
         this.expirationMs = expirationMs;
     }
 
-    public String generateToken(String email) {
+    public String generateToken(String email, List<String> roles, Long departmentId) {
         var now = new Date();
         var expiry = new Date(now.getTime() + expirationMs);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(email)
+                .claim("roles", roles)
                 .issuedAt(now)
                 .expiration(expiry)
-                .signWith(key)
-                .compact();
+                .signWith(key);
+
+        if (departmentId != null) {
+            builder.claim("departmentId", departmentId);
+        }
+
+        return builder.compact();
     }
 
     public String getEmailFromToken(String token) {
@@ -42,6 +49,17 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
         return claims.getSubject();
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<String> getRolesFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        var roles = claims.get("roles", List.class);
+        return roles != null ? roles : List.of();
     }
 
     public boolean validateToken(String token) {

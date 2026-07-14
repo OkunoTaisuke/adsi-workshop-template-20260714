@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import * as api from "@/lib/attendance-api";
 import type { AttendanceResponse } from "@/lib/types";
 import Link from "next/link";
+import { useEffect } from "react";
 
 export default function Dashboard() {
   const { employee, isLoading } = useAuth();
@@ -37,6 +38,13 @@ export default function Dashboard() {
       cancelled = true;
     };
   }, [employee]);
+
+  useEffect(() => {
+    if (!isLoading && !employee) {
+      const loginPath = window.location.pathname.replace(/\/$/, "") + "/login";
+      window.location.href = loginPath;
+    }
+  }, [isLoading, employee]);
 
   useEffect(() => {
     if (!isLoading && !employee) {
@@ -148,7 +156,7 @@ export default function Dashboard() {
             </div>
           </section>
 
-          {employee.role === "ADMIN" && (
+          {employee.roles?.includes("ADMIN") && (
             <section>
               <h3 className="text-lg font-semibold text-gray-700 mb-4">
                 管理者メニュー

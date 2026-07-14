@@ -13,7 +13,8 @@ interface Employee {
   id: number;
   email: string;
   name: string;
-  role: "EMPLOYEE" | "ADMIN";
+  roles: string[];
+  departmentId: number | null;
 }
 
 interface AuthContextType {
@@ -21,6 +22,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  hasRole: (role: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -73,8 +75,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setEmployee(null);
   }, []);
 
+  const hasRole = useCallback(
+    (role: string) => {
+      return employee?.roles?.includes(role) ?? false;
+    },
+    [employee]
+  );
+
   return (
-    <AuthContext.Provider value={{ employee, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ employee, isLoading, login, logout, hasRole }}>
       {children}
     </AuthContext.Provider>
   );
