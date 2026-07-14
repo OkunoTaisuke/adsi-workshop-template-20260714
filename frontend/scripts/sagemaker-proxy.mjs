@@ -6,7 +6,6 @@ const PREFIX = "/codeeditor/default/absports/3000";
 
 const server = http.createServer((req, res) => {
   const url = PREFIX + req.url;
-  console.log(`[proxy] ${req.method} ${req.url} -> ${url}`);
 
   const options = {
     hostname: "127.0.0.1",
@@ -17,7 +16,6 @@ const server = http.createServer((req, res) => {
   };
 
   const proxyReq = http.request(options, (proxyRes) => {
-    console.log(`[proxy]   <- ${proxyRes.statusCode}`);
     res.writeHead(proxyRes.statusCode, proxyRes.headers);
     proxyRes.pipe(res, { end: true });
   });
