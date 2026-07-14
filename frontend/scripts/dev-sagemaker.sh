@@ -40,10 +40,10 @@ PROXY_PID=$!
 echo "[dev-sagemaker] Proxy PID: $PROXY_PID"
 sleep 1
 
-# Verify
+# Verify (proxy receives paths with /absports/3000 already stripped by code-server)
 echo "[dev-sagemaker] Verifying..."
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/absports/3000/ || echo "000")
-echo "[dev-sagemaker] GET /absports/3000/ -> $STATUS"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ || echo "000")
+echo "[dev-sagemaker] GET / -> $STATUS"
 
 echo ""
 echo "=== SageMaker Preview Ready ==="
