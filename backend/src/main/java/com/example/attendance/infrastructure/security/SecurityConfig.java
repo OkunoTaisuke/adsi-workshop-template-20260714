@@ -35,9 +35,16 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) ->
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN))
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login").permitAll()
+                        .requestMatchers("/departments/**").hasRole("ADMIN")
+                        .requestMatchers("/employees/**").hasRole("ADMIN")
+                        .requestMatchers("/leaves/subordinates").hasRole("MANAGER")
+                        .requestMatchers("/leaves/*/approve").hasRole("MANAGER")
+                        .requestMatchers("/leaves/*/reject").hasRole("MANAGER")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

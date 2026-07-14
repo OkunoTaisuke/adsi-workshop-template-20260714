@@ -3,9 +3,17 @@
 import { useAuth } from "@/lib/auth-context";
 import { Header } from "@/components/Header";
 import Link from "next/link";
+import { useEffect } from "react";
 
 export default function Dashboard() {
   const { employee, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !employee) {
+      const loginPath = window.location.pathname.replace(/\/$/, "") + "/login";
+      window.location.href = loginPath;
+    }
+  }, [isLoading, employee]);
 
   if (isLoading) {
     return (
@@ -16,8 +24,6 @@ export default function Dashboard() {
   }
 
   if (!employee) {
-    const loginPath = window.location.pathname.replace(/\/$/, "") + "/login";
-    window.location.href = loginPath;
     return null;
   }
 
@@ -100,7 +106,7 @@ export default function Dashboard() {
             </div>
           </section>
 
-          {employee.role === "ADMIN" && (
+          {employee.roles?.includes("ADMIN") && (
             <section>
               <h3 className="text-lg font-semibold text-gray-700 mb-4">
                 管理者メニュー
