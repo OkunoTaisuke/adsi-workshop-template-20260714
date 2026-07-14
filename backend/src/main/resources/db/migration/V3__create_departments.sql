@@ -5,3 +5,8 @@ CREATE TABLE departments (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     version BIGINT NOT NULL DEFAULT 0
 );
+
+INSERT INTO departments (name) VALUES
+('開発部'),
+('営業部'),
+('総務部');
