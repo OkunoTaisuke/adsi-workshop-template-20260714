@@ -5,7 +5,7 @@ const NEXT_PORT = 3001;
 const PREFIX = "/codeeditor/default";
 
 const server = http.createServer((req, res) => {
-  const url = PREFIX + req.url;
+  const url = req.url.startsWith(PREFIX) ? req.url : PREFIX + req.url;
 
   const options = {
     hostname: "127.0.0.1",
