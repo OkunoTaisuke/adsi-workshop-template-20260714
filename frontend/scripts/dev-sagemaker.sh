@@ -4,31 +4,25 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRONTEND_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_DIR="$(dirname "$FRONTEND_DIR")"
+PID_FILE="$PROJECT_DIR/.dev-sagemaker.pids"
 
-# Stop existing processes
+# Stop existing processes via PID file (kill process groups)
 echo "[dev-sagemaker] Stopping existing processes..."
-if command -v lsof &>/dev/null; then
-  kill "$(lsof -ti :3000)" 2>/dev/null || true
-  kill "$(lsof -ti :3001)" 2>/dev/null || true
-  kill "$(lsof -ti :8080)" 2>/dev/null || true
-elif command -v fuser &>/dev/null; then
-  fuser -k 3000/tcp 2>/dev/null || true
-  fuser -k 3001/tcp 2>/dev/null || true
-  fuser -k 8080/tcp 2>/dev/null || true
-else
-  pkill -f "sagemaker-proxy.mjs" 2>/dev/null || true
-  pkill -f "next start.*3001" 2>/dev/null || true
-  pkill -f "spring-boot:run.*local" 2>/dev/null || true
+if [[ -f "$PID_FILE" ]]; then
+  while IFS= read -r pid; do
+    kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+  done < "$PID_FILE"
+  rm -f "$PID_FILE"
 fi
 sleep 1
 
 export SAGEMAKER=1
 export NEXT_PUBLIC_BASE_PATH=/codeeditor/default/absports/3000
 
-# Start backend (H2, local profile)
+# Start backend (H2, local profile) in its own process group
 echo "[dev-sagemaker] Starting backend (H2)..."
 cd "$PROJECT_DIR/backend"
-mvn spring-boot:run -Dspring-boot.run.profiles=local > /tmp/backend.log 2>&1 &
+setsid mvn spring-boot:run -Dspring-boot.run.profiles=local > /tmp/backend.log 2>&1 &
 BACKEND_PID=$!
 echo "[dev-sagemaker] Backend PID: $BACKEND_PID"
 
@@ -38,7 +32,7 @@ cd "$FRONTEND_DIR"
 npx next build
 
 echo "[dev-sagemaker] Starting Next.js on :3001..."
-npx next start -H 127.0.0.1 -p 3001 > /tmp/frontend-next.log 2>&1 &
+setsid npx next start -H 127.0.0.1 -p 3001 > /tmp/frontend-next.log 2>&1 &
 NEXT_PID=$!
 echo "[dev-sagemaker] Next.js PID: $NEXT_PID"
 sleep 3
@@ -49,6 +43,9 @@ node "$SCRIPT_DIR/sagemaker-proxy.mjs" > /tmp/frontend-proxy.log 2>&1 &
 PROXY_PID=$!
 echo "[dev-sagemaker] Proxy PID: $PROXY_PID"
 sleep 1
+
+# Save PIDs for clean shutdown (used as process group IDs)
+printf '%s\n' "$BACKEND_PID" "$NEXT_PID" "$PROXY_PID" > "$PID_FILE"
 
 # Verify
 echo "[dev-sagemaker] Verifying..."
@@ -63,4 +60,4 @@ echo "Proxy:    http://localhost:3000 (PID: $PROXY_PID)"
 echo ""
 echo "Browser:  https://<studio-domain>/codeeditor/default/absports/3000/"
 echo ""
-echo "To stop:  kill $BACKEND_PID $NEXT_PID $PROXY_PID"
+echo "To stop:  npm run dev:sagemaker:stop"

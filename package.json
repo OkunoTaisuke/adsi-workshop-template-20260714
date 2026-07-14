@@ -7,7 +7,7 @@
     "boot:workshop": "cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=local",
     "dev": "cd frontend && npm run dev",
     "dev:sagemaker": "bash frontend/scripts/dev-sagemaker.sh",
-    "dev:sagemaker:stop": "pkill -f 'sagemaker-proxy.mjs' 2>/dev/null; pkill -f 'next start.*3001' 2>/dev/null; pkill -f 'spring-boot:run.*local' 2>/dev/null; echo 'Stopped'",
+    "dev:sagemaker:stop": "if [ -f .dev-sagemaker.pids ]; then while IFS= read -r pid; do kill -- \"-$pid\" 2>/dev/null || kill \"$pid\" 2>/dev/null || true; done < .dev-sagemaker.pids; rm -f .dev-sagemaker.pids; echo 'Stopped'; else echo 'No running processes found'; fi",
     "check:backend": "cd backend && mvn verify",
     "lint:frontend": "cd frontend && npm run lint"
   }
