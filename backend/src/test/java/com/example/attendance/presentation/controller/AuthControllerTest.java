@@ -5,8 +5,10 @@ import com.example.attendance.application.dto.LoginRequest;
 import com.example.attendance.application.dto.LoginResponse;
 import com.example.attendance.application.service.AuthService;
 import com.example.attendance.domain.model.Employee;
+import com.example.attendance.domain.model.EmployeeRole;
 import com.example.attendance.domain.model.Role;
 import com.example.attendance.domain.repository.EmployeeRepository;
+import com.example.attendance.domain.repository.EmployeeRoleRepository;
 import com.example.attendance.infrastructure.security.JwtTokenProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -20,7 +22,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -49,11 +53,14 @@ class AuthControllerTest {
     @MockitoBean
     private EmployeeRepository employeeRepository;
 
+    @MockitoBean
+    private EmployeeRoleRepository employeeRoleRepository;
+
     @Test
     @DisplayName("正しい認証情報でログインすると200とトークンが返る")
     void login_validCredentials_returns200WithToken() throws Exception {
         var response = new LoginResponse("jwt-token",
-                new EmployeeResponse(1L, "tanaka@example.com", "田中太郎", Role.EMPLOYEE));
+                new EmployeeResponse(1L, "tanaka@example.com", "田中太郎", Set.of("USER"), 10L));
         when(authService.login(any(LoginRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/auth/login")
@@ -85,16 +92,22 @@ class AuthControllerTest {
                 .password("encoded")
                 .name("田中太郎")
                 .role(Role.EMPLOYEE)
+                .departmentId(10L)
                 .build();
 
         when(employeeRepository.findByEmail("tanaka@example.com")).thenReturn(Optional.of(employee));
-        String token = jwtTokenProvider.generateToken("tanaka@example.com");
+        when(employeeRoleRepository.findByEmployeeId(1L))
+                .thenReturn(List.of(EmployeeRole.builder().employeeId(1L).role(Role.USER).build()));
+        when(authService.getMe(any(Employee.class)))
+                .thenReturn(new EmployeeResponse(1L, "tanaka@example.com", "田中太郎", Set.of("USER"), 10L));
+        String token = jwtTokenProvider.generateToken("tanaka@example.com", List.of("USER"), 10L);
 
         mockMvc.perform(get("/auth/me")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("tanaka@example.com"))
-                .andExpect(jsonPath("$.name").value("田中太郎"));
+                .andExpect(jsonPath("$.name").value("田中太郎"))
+                .andExpect(jsonPath("$.roles[0]").value("USER"));
     }
 
     @Test

@@ -16,36 +16,54 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "employees")
+@Table(name = "leave_requests")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Employee {
+public class LeaveRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+    @Column(name = "employee_id", nullable = false)
+    private Long employeeId;
 
-    @Column(nullable = false)
-    private String password;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "leave_type", nullable = false, length = 20)
+    private LeaveType leaveType;
 
-    @Column(nullable = false, length = 100)
-    private String name;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "leave_period_type", nullable = false, length = 20)
+    private LeavePeriodType leavePeriodType;
+
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
+
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
+
+    @Column(length = 500)
+    private String reason;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private Role role = Role.EMPLOYEE;
+    private LeaveStatus status = LeaveStatus.PENDING;
 
-    @Column(name = "department_id")
-    private Long departmentId;
+    @Column(name = "approved_by")
+    private Long approvedBy;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

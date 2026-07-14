@@ -32,6 +32,6 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<EmployeeResponse> me(@AuthenticationPrincipal Employee employee) {
-        return ResponseEntity.ok(EmployeeResponse.from(employee));
+        return ResponseEntity.ok(authService.getMe(employee));
     }
 }
