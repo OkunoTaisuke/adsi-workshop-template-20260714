@@ -2,10 +2,48 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { Header } from "@/components/Header";
+import { ClockButtons } from "@/components/attendance/ClockButtons";
+import { TodayStatus } from "@/components/attendance/TodayStatus";
+import { useEffect, useState } from "react";
+import * as api from "@/lib/attendance-api";
+import type { AttendanceResponse } from "@/lib/types";
 import Link from "next/link";
 
 export default function Dashboard() {
   const { employee, isLoading } = useAuth();
+  const [todayAttendance, setTodayAttendance] =
+    useState<AttendanceResponse | null>(null);
+  const [loadingToday, setLoadingToday] = useState(true);
+
+  const [todayError, setTodayError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!employee) return;
+    let cancelled = false;
+
+    api
+      .getToday()
+      .then((data) => {
+        if (!cancelled) setTodayAttendance(data);
+      })
+      .catch(() => {
+        if (!cancelled) setTodayError("勤怠状態の取得に失敗しました");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingToday(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [employee]);
+
+  useEffect(() => {
+    if (!isLoading && !employee) {
+      const loginPath = window.location.pathname.replace(/\/$/, "") + "/login";
+      window.location.href = loginPath;
+    }
+  }, [isLoading, employee]);
 
   if (isLoading) {
     return (
@@ -16,8 +54,6 @@ export default function Dashboard() {
   }
 
   if (!employee) {
-    const loginPath = window.location.pathname.replace(/\/$/, "") + "/login";
-    window.location.href = loginPath;
     return null;
   }
 
@@ -31,18 +67,11 @@ export default function Dashboard() {
 
   const menuItems = [
     {
-      title: "打刻",
-      description: "出勤・退勤・休憩の打刻",
-      href: "/",
-      icon: "🕐",
-      available: false,
-    },
-    {
       title: "勤怠一覧",
       description: "自分の月別勤怠を確認",
       href: "/attendance",
       icon: "📋",
-      available: false,
+      available: true,
     },
     {
       title: "休暇申請",
@@ -59,7 +88,7 @@ export default function Dashboard() {
       description: "全社員の勤怠一覧を確認",
       href: "/admin/attendance",
       icon: "👥",
-      available: false,
+      available: true,
     },
     {
       title: "休暇承認",
@@ -88,6 +117,25 @@ export default function Dashboard() {
             </h2>
             <p className="text-gray-500 mt-1">{dateStr}</p>
           </div>
+
+          <section className="mb-8 bg-white rounded-lg border p-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+              打刻
+            </h3>
+            {loadingToday ? (
+              <p className="text-gray-400 text-sm">読み込み中...</p>
+            ) : todayError ? (
+              <p className="text-red-600 text-sm">{todayError}</p>
+            ) : (
+              <div className="space-y-4">
+                <TodayStatus attendance={todayAttendance} />
+                <ClockButtons
+                  attendance={todayAttendance}
+                  onUpdate={setTodayAttendance}
+                />
+              </div>
+            )}
+          </section>
 
           <section className="mb-8">
             <h3 className="text-lg font-semibold text-gray-700 mb-4">

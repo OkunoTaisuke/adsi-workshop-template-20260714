@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api-client";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 export default function LoginForm() {
   const { login, employee } = useAuth();
@@ -11,9 +11,14 @@ export default function LoginForm() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (employee) {
+      const dest = window.location.pathname.replace(/\/login$/, "") || "/";
+      window.location.href = dest;
+    }
+  }, [employee]);
+
   if (employee) {
-    const dest = window.location.pathname.replace(/\/login$/, "") || "/";
-    window.location.href = dest;
     return null;
   }
 

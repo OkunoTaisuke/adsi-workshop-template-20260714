@@ -30,4 +30,10 @@ public class GlobalExceptionHandler {
                 ));
         return ResponseEntity.badRequest().body(errors);
     }
+
+    @ExceptionHandler(AttendanceException.class)
+    public ResponseEntity<Map<String, String>> handleAttendance(AttendanceException ex) {
+        return ResponseEntity.status(ex.getStatus())
+                .body(Map.of("error", ex.getErrorCode(), "message", ex.getMessage()));
+    }
 }

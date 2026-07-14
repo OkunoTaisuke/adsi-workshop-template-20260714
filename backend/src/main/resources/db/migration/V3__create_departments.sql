@@ -1,0 +1,10 @@
+CREATE TABLE departments (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO departments (name) VALUES
+('開発部'),
+('営業部'),
+('総務部');
