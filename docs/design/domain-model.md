@@ -11,9 +11,18 @@
 | password | String | BCrypt ハッシュ |
 | name | String | 氏名 |
 | role | Role (enum) | EMPLOYEE / ADMIN |
+| departmentId | Long | FK → Department（nullable） |
 | createdAt | LocalDateTime | 作成日時 |
 | updatedAt | LocalDateTime | 更新日時 |
 | version | Long | 楽観ロック |
+
+### Department（部署）
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| id | Long | 自動採番 PK |
+| name | String | 部署名（UNIQUE） |
+| createdAt | LocalDateTime | 作成日時 |
 
 ### AttendanceRecord（勤怠記録）
 
@@ -23,17 +32,22 @@
 |-----------|-----|------|
 | id | Long | 自動採番 PK |
 | employeeId | Long | FK → Employee |
-| date | LocalDate | 勤務日 |
-| clockIn | LocalTime | 出勤時刻 |
-| clockOut | LocalTime | 退勤時刻 |
+| date | LocalDate | 勤務日（出勤日基準） |
+| clockIn | LocalTime | 出勤時刻（nullable: 無効化時） |
+| clockOut | LocalTime | 退勤時刻（nullable） |
+| totalWorkMinutes | Integer | 勤務時間（分）。退勤時/修正時に計算。nullable |
+| totalBreakMinutes | Integer | 休憩時間（分）。退勤時/修正時に計算。nullable |
+| overtimeMinutes | Integer | 残業時間（分）。退勤時/修正時に計算。nullable |
 | createdAt | LocalDateTime | 作成日時 |
 | updatedAt | LocalDateTime | 更新日時 |
 | version | Long | 楽観ロック |
 
 ビジネスルール:
 - 同一社員・同一日付で一意（UNIQUE制約）
-- clockIn が null でない限り clockOut は打刻可能
-- 勤務時間 = clockOut - clockIn - 休憩合計
+- 日跨ぎ: `clockOut < clockIn` の場合、翌日退勤とみなす
+- 勤務時間 = (clockOut - clockIn) - 休憩合計（日跨ぎ考慮）
+- 残業 = max(0, 勤務時間 - 480分)
+- 打刻無効化: clockIn / clockOut を null にセット可能（レコード自体は削除しない）
 
 ### BreakRecord（休憩記録）
 
@@ -79,16 +93,32 @@
 
 ### WorkDuration（勤務時間）
 
-- totalMinutes: int
+- totalMinutes: int（分単位。端数処理なし）
 - 計算: clockOut - clockIn - 休憩合計
-- 残業: totalMinutes - 480（8時間 = 480分）を超えた分
+- 日跨ぎ対応: clockOut < clockIn → 翌日とみなし 24時間加算
+- 残業: max(0, totalMinutes - 480)
 
-## Enum
+## Enum（勤怠）
+
+### AttendanceStatus（コアタイムチェック結果）
+
+フロント表示用。API レスポンスに含める。
+
+| 値 | 条件 |
+|---|------|
+| OK | 出勤 ≤ 10:00 かつ 退勤 ≥ 15:00 かつ 勤務 ≥ 480分 |
+| LATE_START | 出勤 > 10:00 |
+| EARLY_LEAVE | 退勤 < 15:00 |
+| SHORT_HOURS | 勤務 < 480分 |
+
+## Enum（共通）
 
 ### Role
 
 - EMPLOYEE
 - ADMIN
+
+## Enum（休暇）
 
 ### LeaveType
 
@@ -105,16 +135,17 @@
 ## ドメイン関連図
 
 ```
-Employee (1) ──── (N) AttendanceRecord (1) ──── (N) BreakRecord
-    │                       │
-    │                       └──── (N) AttendanceRevision
-    │
-    └──── (N) LeaveRequest
+Department (1) ──── (N) Employee (1) ──── (N) AttendanceRecord (1) ──── (N) BreakRecord
+                        │                       │
+                        │                       └──── (N) AttendanceRevision
+                        │
+                        └──── (N) LeaveRequest
 ```
 
 ## Repository（interface）
 
 - EmployeeRepository
+- DepartmentRepository
 - AttendanceRecordRepository
 - BreakRecordRepository
 - AttendanceRevisionRepository
@@ -126,5 +157,6 @@ Employee (1) ──── (N) AttendanceRecord (1) ──── (N) BreakRecord
 |---------|------|
 | AuthService | ログイン認証・トークン発行 |
 | AttendanceService | 打刻（出勤/退勤/休憩）・修正・一覧取得 |
+| DepartmentService | 部署一覧取得 |
 | LeaveService | 休暇申請・承認/却下・一覧取得 |
 | ReportService | 月次集計・CSV 生成 |

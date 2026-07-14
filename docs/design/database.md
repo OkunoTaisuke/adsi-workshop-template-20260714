@@ -3,50 +3,61 @@
 ## ER 図
 
 ```
-┌──────────────┐       ┌─────────────────────┐       ┌──────────────────┐
-│  employees   │       │ attendance_records   │       │  break_records   │
-├──────────────┤       ├─────────────────────┤       ├──────────────────┤
-│ id (PK)      │1────N│ id (PK)             │1────N│ id (PK)          │
-│ email (UQ)   │       │ employee_id (FK)     │       │ attendance_id(FK)│
-│ password     │       │ date                 │       │ break_start      │
-│ name         │       │ clock_in             │       │ break_end        │
-│ role         │       │ clock_out            │       └──────────────────┘
-│ created_at   │       │ created_at           │
-│ updated_at   │       │ updated_at           │
-│ version      │       │ version              │
-└──────────────┘       └─────────────────────┘
-       │                        │
-       │                        │1────N┌─────────────────────────┐
-       │                               │ attendance_revisions    │
-       │                               ├─────────────────────────┤
-       │                               │ id (PK)                │
-       │                               │ attendance_record_id(FK)│
-       │                               │ field_name             │
-       │                               │ old_value              │
-       │                               │ new_value              │
-       │                               │ revised_at             │
-       │                               │ revised_by (FK)        │
-       │                               └─────────────────────────┘
-       │
-       │1────N┌──────────────────┐
-              │  leave_requests  │
-              ├──────────────────┤
-              │ id (PK)          │
-              │ employee_id (FK) │
-              │ leave_type       │
-              │ start_date       │
-              │ end_date         │
-              │ reason           │
-              │ status           │
-              │ approved_by (FK) │
-              │ approved_at      │
-              │ created_at       │
-              │ updated_at       │
-              │ version          │
-              └──────────────────┘
+┌──────────────┐       ┌──────────────┐       ┌─────────────────────┐       ┌──────────────────┐
+│ departments  │       │  employees   │       │ attendance_records   │       │  break_records   │
+├──────────────┤       ├──────────────┤       ├─────────────────────┤       ├──────────────────┤
+│ id (PK)      │1────N│ id (PK)      │1────N│ id (PK)             │1────N│ id (PK)          │
+│ name (UQ)    │       │ email (UQ)   │       │ employee_id (FK)     │       │ attendance_id(FK)│
+│ created_at   │       │ password     │       │ date                 │       │ break_start      │
+└──────────────┘       │ name         │       │ clock_in             │       │ break_end        │
+                       │ role         │       │ clock_out            │       └──────────────────┘
+                       │ department_id│       │ total_work_minutes   │
+                       │ created_at   │       │ total_break_minutes  │
+                       │ updated_at   │       │ overtime_minutes     │
+                       │ version      │       │ created_at           │
+                       └──────────────┘       │ updated_at           │
+                              │               │ version              │
+                              │               └─────────────────────┘
+                              │                        │
+                              │                        │1────N┌─────────────────────────┐
+                              │                               │ attendance_revisions    │
+                              │                               ├─────────────────────────┤
+                              │                               │ id (PK)                │
+                              │                               │ attendance_record_id(FK)│
+                              │                               │ field_name             │
+                              │                               │ old_value              │
+                              │                               │ new_value              │
+                              │                               │ revised_at             │
+                              │                               │ revised_by (FK)        │
+                              │                               └─────────────────────────┘
+                              │
+                              │1────N┌──────────────────┐
+                                     │  leave_requests  │
+                                     ├──────────────────┤
+                                     │ id (PK)          │
+                                     │ employee_id (FK) │
+                                     │ leave_type       │
+                                     │ start_date       │
+                                     │ end_date         │
+                                     │ reason           │
+                                     │ status           │
+                                     │ approved_by (FK) │
+                                     │ approved_at      │
+                                     │ created_at       │
+                                     │ updated_at       │
+                                     │ version          │
+                                     └──────────────────┘
 ```
 
 ## テーブル定義
+
+### departments
+
+| カラム | 型 | 制約 | 説明 |
+|--------|-----|------|------|
+| id | BIGSERIAL | PK | |
+| name | VARCHAR(100) | NOT NULL, UNIQUE | 部署名 |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | |
 
 ### employees
 
@@ -57,6 +68,7 @@
 | password | VARCHAR(255) | NOT NULL | BCrypt ハッシュ |
 | name | VARCHAR(100) | NOT NULL | 氏名 |
 | role | VARCHAR(20) | NOT NULL, DEFAULT 'EMPLOYEE' | EMPLOYEE / ADMIN |
+| department_id | BIGINT | FK → departments | 所属部署（nullable） |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | |
 | updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | |
 | version | BIGINT | NOT NULL, DEFAULT 0 | 楽観ロック |
@@ -70,6 +82,9 @@
 | date | DATE | NOT NULL | 勤務日 |
 | clock_in | TIME | | 出勤時刻 |
 | clock_out | TIME | | 退勤時刻 |
+| total_work_minutes | INTEGER | | 勤務時間（分）。退勤時/修正時に計算 |
+| total_break_minutes | INTEGER | | 休憩時間（分）。退勤時/修正時に計算 |
+| overtime_minutes | INTEGER | | 残業時間（分）。退勤時/修正時に計算 |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | |
 | updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | |
 | version | BIGINT | NOT NULL, DEFAULT 0 | 楽観ロック |
@@ -117,6 +132,7 @@
 ## インデックス
 
 - employees: email (UNIQUE)
+- employees: department_id
 - attendance_records: (employee_id, date) (UNIQUE)
 - attendance_records: employee_id
 - break_records: attendance_record_id
@@ -127,4 +143,17 @@
 ## マイグレーション方針
 
 - Flyway で管理する（`ddl-auto` 禁止）
-- バージョン命名: `V1__create_employees.sql`, `V2__create_attendance_records.sql`, ...
+- バージョン命名: `V1__create_employees.sql`, `V2__insert_sample_data.sql`, ...
+
+### 確定済みバージョン
+
+| バージョン | ファイル | 内容 | Unit |
+|-----------|---------|------|------|
+| V1 | `V1__create_employees.sql` | employees テーブル作成 | 0 |
+| V2 | `V2__insert_sample_data.sql` | サンプルデータ投入 | 0 |
+| V3 | `V3__create_departments.sql` | departments テーブル作成 | 1 |
+| V4 | `V4__add_department_to_employees.sql` | employees に department_id 追加 | 1 |
+| V5 | `V5__create_attendance_records.sql` | attendance_records（計算カラム含む） | 1 |
+| V6 | `V6__create_break_records.sql` | break_records | 1 |
+| V7 | `V7__create_attendance_revisions.sql` | attendance_revisions | 1 |
+| V8 | `V8__create_leave_requests.sql` | leave_requests | 2 |

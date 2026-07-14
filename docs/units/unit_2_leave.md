@@ -19,7 +19,7 @@
 
 ### Backend
 
-- Flyway: `V5__create_leave_requests.sql`
+- Flyway: `V8__create_leave_requests.sql`
 - Entity: LeaveRequest
 - Enum: LeaveType, LeaveStatus
 - Repository: LeaveRequestRepository
