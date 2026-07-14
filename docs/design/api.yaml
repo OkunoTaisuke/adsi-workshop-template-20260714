@@ -1,0 +1,515 @@
+openapi: 3.0.3
+info:
+  title: 勤怠管理システム API
+  version: 1.0.0
+  description: 中小企業向け勤怠管理システムの REST API
+
+servers:
+  - url: http://localhost:8080/api
+    description: ローカル開発
+
+paths:
+  # === 認証 ===
+  /auth/login:
+    post:
+      tags: [認証]
+      summary: ログイン
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 認証失敗
+
+  /auth/me:
+    get:
+      tags: [認証]
+      summary: ログインユーザー情報取得
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeResponse'
+
+  # === 打刻 ===
+  /attendance/clock-in:
+    post:
+      tags: [打刻]
+      summary: 出勤打刻
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceResponse'
+        '409':
+          description: 既に出勤済み
+
+  /attendance/clock-out:
+    post:
+      tags: [打刻]
+      summary: 退勤打刻
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceResponse'
+        '400':
+          description: 出勤打刻がない
+
+  /attendance/break-start:
+    post:
+      tags: [打刻]
+      summary: 休憩開始
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceResponse'
+
+  /attendance/break-end:
+    post:
+      tags: [打刻]
+      summary: 休憩終了
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceResponse'
+
+  # === 勤怠一覧 ===
+  /attendance/my:
+    get:
+      tags: [勤怠一覧]
+      summary: 自分の勤怠一覧（月別）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttendanceDetailResponse'
+
+  /attendance/all:
+    get:
+      tags: [勤怠一覧]
+      summary: 全社員の勤怠一覧（管理者のみ）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: employeeName
+          in: query
+          schema:
+            type: string
+          description: 社員名で絞り込み（部分一致）
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttendanceDetailResponse'
+        '403':
+          description: 権限なし
+
+  # === 打刻修正 ===
+  /attendance/{id}:
+    put:
+      tags: [打刻修正]
+      summary: 打刻修正（本人のみ）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceUpdateRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceResponse'
+        '403':
+          description: 他人の記録は修正不可
+        '404':
+          description: 記録が見つからない
+
+  # === 休暇申請 ===
+  /leaves:
+    get:
+      tags: [休暇申請]
+      summary: 休暇申請一覧
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LeaveRequestResponse'
+    post:
+      tags: [休暇申請]
+      summary: 休暇申請作成
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaveRequestCreateRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+
+  /leaves/{id}/approve:
+    put:
+      tags: [休暇申請]
+      summary: 休暇申請承認（管理者のみ）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '403':
+          description: 権限なし
+
+  /leaves/{id}/reject:
+    put:
+      tags: [休暇申請]
+      summary: 休暇申請却下（管理者のみ）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '403':
+          description: 権限なし
+
+  # === 月次レポート ===
+  /reports/monthly:
+    get:
+      tags: [レポート]
+      summary: 月次集計データ取得（管理者のみ）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MonthlyReportResponse'
+
+  /reports/monthly/csv:
+    get:
+      tags: [レポート]
+      summary: 月次レポート CSV ダウンロード（管理者のみ）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: CSV ファイル
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        employee:
+          $ref: '#/components/schemas/EmployeeResponse'
+
+    EmployeeResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [EMPLOYEE, ADMIN]
+
+    AttendanceResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        date:
+          type: string
+          format: date
+        clockIn:
+          type: string
+          format: time
+        clockOut:
+          type: string
+          format: time
+        breaks:
+          type: array
+          items:
+            $ref: '#/components/schemas/BreakResponse'
+
+    BreakResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        breakStart:
+          type: string
+          format: time
+        breakEnd:
+          type: string
+          format: time
+
+    AttendanceDetailResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        employeeId:
+          type: integer
+          format: int64
+        employeeName:
+          type: string
+        date:
+          type: string
+          format: date
+        clockIn:
+          type: string
+          format: time
+        clockOut:
+          type: string
+          format: time
+        breaks:
+          type: array
+          items:
+            $ref: '#/components/schemas/BreakResponse'
+        totalWorkMinutes:
+          type: integer
+          description: 勤務時間（分）
+        totalBreakMinutes:
+          type: integer
+          description: 休憩時間（分）
+        overtimeMinutes:
+          type: integer
+          description: 残業時間（分）
+
+    AttendanceUpdateRequest:
+      type: object
+      properties:
+        clockIn:
+          type: string
+          format: time
+        clockOut:
+          type: string
+          format: time
+
+    LeaveRequestCreateRequest:
+      type: object
+      required: [leaveType, startDate, endDate]
+      properties:
+        leaveType:
+          type: string
+          enum: [PAID, SICK, OTHER]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        reason:
+          type: string
+
+    LeaveRequestResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        employeeId:
+          type: integer
+          format: int64
+        employeeName:
+          type: string
+        leaveType:
+          type: string
+          enum: [PAID, SICK, OTHER]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        approvedByName:
+          type: string
+        approvedAt:
+          type: string
+          format: date-time
+
+    MonthlyReportResponse:
+      type: object
+      properties:
+        employeeId:
+          type: integer
+          format: int64
+        employeeName:
+          type: string
+        workDays:
+          type: integer
+          description: 勤務日数
+        totalWorkMinutes:
+          type: integer
+          description: 総勤務時間（分）
+        totalBreakMinutes:
+          type: integer
+          description: 総休憩時間（分）
+        overtimeMinutes:
+          type: integer
+          description: 総残業時間（分）
