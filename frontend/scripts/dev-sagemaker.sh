@@ -7,9 +7,19 @@ PROJECT_DIR="$(dirname "$FRONTEND_DIR")"
 
 # Stop existing processes
 echo "[dev-sagemaker] Stopping existing processes..."
-kill "$(lsof -ti :3000)" 2>/dev/null || true
-kill "$(lsof -ti :3001)" 2>/dev/null || true
-kill "$(lsof -ti :8080)" 2>/dev/null || true
+if command -v lsof &>/dev/null; then
+  kill "$(lsof -ti :3000)" 2>/dev/null || true
+  kill "$(lsof -ti :3001)" 2>/dev/null || true
+  kill "$(lsof -ti :8080)" 2>/dev/null || true
+elif command -v fuser &>/dev/null; then
+  fuser -k 3000/tcp 2>/dev/null || true
+  fuser -k 3001/tcp 2>/dev/null || true
+  fuser -k 8080/tcp 2>/dev/null || true
+else
+  pkill -f "sagemaker-proxy.mjs" 2>/dev/null || true
+  pkill -f "next start.*3001" 2>/dev/null || true
+  pkill -f "spring-boot:run.*local" 2>/dev/null || true
+fi
 sleep 1
 
 export SAGEMAKER=1
